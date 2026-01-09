@@ -51,6 +51,9 @@ public class SysLoginService
     @Autowired
     private ISysConfigService configService;
 
+    @Autowired
+    private LicenseVerifyUtils licenseVerifyUtils;
+
     /**
      * 登录验证
      * 
@@ -62,6 +65,8 @@ public class SysLoginService
      */
     public String login(String username, String password, String code, String uuid)
     {
+        // 最优先校验 License，如果过期直接抛出异常，不再进行后续验证码和密码校验
+        licenseVerifyUtils.verifyLicense();
         // 验证码校验
         validateCaptcha(username, code, uuid);
         // 登录前置校验
