@@ -1,4 +1,4 @@
-package com.arsc.traceGuard.feature.controller;
+package com.arsc.traceGuard.web.controller.feature;
 
 import java.util.List;
 import javax.servlet.http.HttpServletResponse;

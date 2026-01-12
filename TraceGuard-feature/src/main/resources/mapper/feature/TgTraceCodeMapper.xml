@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.arsc.traceGuard.feature.mapper.TgTraceCodeMapper">
+
+    <resultMap type="TgTraceCode" id="TgTraceCodeResult">
+        <result property="codeId"    column="code_id"    />
+        <result property="productId"    column="product_id"    />
+        <result property="productName" column="product_name" />
+        <result property="codeValue"    column="code_value"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="scanState"    column="scan_state"    />
+        <result property="scanCount"    column="scan_count"    />
+        <result property="firstScanTime"    column="first_scan_time"    />
+        <result property="firstScanIp"    column="first_scan_ip"    />
+        <result property="firstScanLoc"    column="first_scan_loc"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="codeCount" column="code_count" />
+    </resultMap>
+
+    <sql id="selectTgTraceCodeVo">
+        select code_id, product_id, code_value, batch_no, scan_state, scan_count, first_scan_time, first_scan_ip, first_scan_loc, status, create_by, create_time, update_by, update_time, remark from tg_trace_code
+    </sql>
+
+    <select id="selectTgTraceCodeList" parameterType="TgTraceCode" resultMap="TgTraceCodeResult">
+        SELECT
+        tc.code_id, tc.product_id, tc.code_value, tc.batch_no,
+        tc.scan_state, tc.scan_count, tc.first_scan_time,
+        tc.first_scan_ip, tc.first_scan_loc, tc.status,
+        tc.create_by, tc.create_time, tc.update_by, tc.update_time, tc.remark,
+        p.product_name
+        FROM tg_trace_code tc
+        LEFT JOIN tg_product p ON tc.product_id = p.product_id
+        <where>
+            <if test="productName != null and productName != ''">
+                AND p.product_name LIKE concat('%', #{productName}, '%')
+            </if>
+            <if test="codeValue != null and codeValue != ''">
+                AND tc.code_value = #{codeValue}
+            </if>
+            <if test="batchNo != null and batchNo != ''">
+                AND tc.batch_no = #{batchNo}
+            </if>
+            <if test="status != null and status != ''">
+                AND tc.status = #{status}
+            </if>
+            <if test="scanState != null and scanState != ''">
+                AND tc.scan_state = #{scanState}
+            </if>
+        </where>
+        ORDER BY tc.create_time DESC
+    </select>
+
+    <select id="selectTgTraceCodeByCodeId" parameterType="Long" resultMap="TgTraceCodeResult">
+        <include refid="selectTgTraceCodeVo"/>
+        where code_id = #{codeId}
+    </select>
+
+    <select id="selectTgTraceCodeByCodeValue" parameterType="String" resultMap="TgTraceCodeResult">
+        <include refid="selectTgTraceCodeVo"/>
+        where code_value = #{codeValue}
+    </select>
+
+    <insert id="insertTgTraceCode" parameterType="TgTraceCode" useGeneratedKeys="true" keyProperty="codeId">
+        insert into tg_trace_code
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="productId != null">product_id,</if>
+            <if test="codeValue != null and codeValue != ''">code_value,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="scanState != null">scan_state,</if>
+            <if test="scanCount != null">scan_count,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="productId != null">#{productId},</if>
+            <if test="codeValue != null and codeValue != ''">#{codeValue},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="scanState != null">#{scanState},</if>
+            <if test="scanCount != null">#{scanCount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <insert id="batchInsertTgTraceCode">
+        insert into tg_trace_code (product_id, code_value, batch_no, scan_state, scan_count, status, create_by, create_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.productId}, #{item.codeValue}, #{item.batchNo}, '0', 0, '0', #{item.createBy}, sysdate())
+        </foreach>
+    </insert>
+
+    <update id="updateTgTraceCode" parameterType="TgTraceCode">
+        update tg_trace_code
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="codeValue != null and codeValue != ''">code_value = #{codeValue},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="scanState != null">scan_state = #{scanState},</if>
+            <if test="scanCount != null">scan_count = #{scanCount},</if>
+            <if test="firstScanTime != null">first_scan_time = #{firstScanTime},</if>
+            <if test="firstScanIp != null">first_scan_ip = #{firstScanIp},</if>
+            <if test="firstScanLoc != null">first_scan_loc = #{firstScanLoc},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where code_id = #{codeId}
+    </update>
+
+    <delete id="deleteTgTraceCodeByCodeIds" parameterType="String">
+        delete from tg_trace_code where code_id in
+        <foreach item="codeId" collection="array" open="(" separator="," close=")">
+            #{codeId}
+        </foreach>
+    </delete>
+
+    <select id="selectBatchList" resultMap="TgTraceCodeResult">
+        SELECT
+        tc.batch_no,
+        tc.product_id,
+        p.product_name, COUNT(*) as code_count,
+        MIN(tc.create_time) as create_time
+        FROM tg_trace_code tc
+        LEFT JOIN tg_product p ON tc.product_id = p.product_id
+        <where>
+            <if test="productId != null"> AND tc.product_id = #{productId} </if>
+            <if test="batchNo != null and batchNo != ''"> AND tc.batch_no like concat('%', #{batchNo}, '%') </if>
+        </where>
+        GROUP BY tc.batch_no, tc.product_id
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectListByBatch" resultMap="TgTraceCodeResult">
+        <include refid="selectTgTraceCodeVo"/>
+        WHERE product_id = #{productId} AND batch_no = #{batchNo}
+    </select>
+    <select id="selectTraceCodeStats" parameterType="TgTraceCode" resultType="java.util.Map">
+        SELECT
+        COUNT(*) as totalCount,
+        IFNULL(SUM(CASE WHEN tc.scan_state = '1' THEN 1 ELSE 0 END), 0) as scannedCount,
+        IFNULL(SUM(CASE WHEN tc.status = '1' THEN 1 ELSE 0 END), 0) as voidCount
+        FROM tg_trace_code tc
+        LEFT JOIN tg_product p ON tc.product_id = p.product_id
+        <where>
+            <if test="productName != null and productName != ''">
+                AND p.product_name LIKE concat('%', #{productName}, '%')
+            </if>
+            <if test="codeValue != null and codeValue != ''">
+                AND tc.code_value = #{codeValue}
+            </if>
+            <if test="batchNo != null and batchNo != ''">
+                AND tc.batch_no = #{batchNo}
+            </if>
+        </where>
+    </select>
+</mapper>

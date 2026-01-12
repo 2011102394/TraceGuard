@@ -41,6 +41,7 @@ public class TgProduct extends BaseEntity
     /** 删除标志 */
     private String delFlag;
 
+
     public void setProductId(Long productId) 
     {
         this.productId = productId;
