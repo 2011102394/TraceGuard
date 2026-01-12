@@ -127,25 +127,52 @@
         </foreach>
     </delete>
 
-    <select id="selectBatchList" resultMap="TgTraceCodeResult">
+    <select id="selectBatchList" parameterType="TgTraceCode" resultMap="TgTraceCodeResult">
         SELECT
         tc.batch_no,
         tc.product_id,
-        p.product_name, COUNT(*) as code_count,
+        p.product_name,
+        COUNT(*) as code_count,
         MIN(tc.create_time) as create_time
         FROM tg_trace_code tc
         LEFT JOIN tg_product p ON tc.product_id = p.product_id
         <where>
-            <if test="productId != null"> AND tc.product_id = #{productId} </if>
-            <if test="batchNo != null and batchNo != ''"> AND tc.batch_no like concat('%', #{batchNo}, '%') </if>
+            <if test="productId != null">
+                AND tc.product_id = #{productId}
+            </if>
+            <if test="productName != null and productName != ''">
+                AND p.product_name LIKE concat('%', #{productName}, '%')
+            </if>
+            <if test="batchNo != null and batchNo != ''">
+                AND tc.batch_no LIKE concat('%', #{batchNo}, '%')
+            </if>
         </where>
-        GROUP BY tc.batch_no, tc.product_id
+        GROUP BY tc.batch_no, tc.product_id, p.product_name
         ORDER BY create_time DESC
     </select>
 
     <select id="selectListByBatch" resultMap="TgTraceCodeResult">
-        <include refid="selectTgTraceCodeVo"/>
-        WHERE product_id = #{productId} AND batch_no = #{batchNo}
+        SELECT
+        tc.code_id,
+        tc.code_value,
+        tc.batch_no,
+        tc.status,
+        tc.scan_state,
+        tc.scan_count,
+        tc.first_scan_time,
+        tc.first_scan_ip,
+        tc.first_scan_loc, tc.product_id,
+        tc.create_time,
+        p.product_name  FROM tg_trace_code tc
+        LEFT JOIN tg_product p ON tc.product_id = p.product_id
+        <where>
+            <if test="batchNo != null and batchNo != ''">
+                AND tc.batch_no = #{batchNo}
+            </if>
+            <if test="productId != null">
+                AND tc.product_id = #{productId}
+            </if>
+        </where>
     </select>
     <select id="selectTraceCodeStats" parameterType="TgTraceCode" resultType="java.util.Map">
         SELECT

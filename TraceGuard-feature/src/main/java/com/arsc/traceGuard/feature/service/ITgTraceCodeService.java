@@ -58,7 +58,7 @@ public interface ITgTraceCodeService
     /**
      * 查询某产品的批次统计
      */
-    public List<TgTraceCode> selectBatchList(Long productId);
+    public List<TgTraceCode> selectBatchList(TgTraceCode tgTraceCode);
 
     /**
      * 查询指定批次的所有码

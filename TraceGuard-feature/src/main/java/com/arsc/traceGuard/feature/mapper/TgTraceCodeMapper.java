@@ -68,10 +68,10 @@ public interface TgTraceCodeMapper
 
     /**
      * 查询某产品的批次统计列表 (聚合查询)
-     * @param productId 产品ID
+     * @param tgTraceCode 防伪码对象
      * @return 包含batchNo和codeCount的对象列表
      */
-    public List<TgTraceCode> selectBatchList(@Param("productId") Long productId);
+    public List<TgTraceCode> selectBatchList(TgTraceCode tgTraceCode);
 
     /**
      * 根据批次号查询所有码 (用于导出)

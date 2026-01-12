@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.arsc.traceGuard.common.utils.sign.AesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,8 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
             TgTraceCode code = new TgTraceCode();
             code.setProductId(productId);
             code.setBatchNo(batchNo);
+            code.setStatus("2");
+            code.setScanState("0");
             // 使用简化的UUID作为防伪码值 (去掉了横线)
             code.setCodeValue(IdUtils.simpleUUID());
             code.setCreateBy(creator);
@@ -65,51 +68,65 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     /**
-     * 核心扫码验证逻辑
+     * 核心扫码验证逻辑 (严格加密模式)
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public AjaxResult verifyCode(String codeValue, String ip, String userAgent) {
-        TgTraceCode code = tgTraceCodeMapper.selectTgTraceCodeByCodeValue(codeValue);
+    public AjaxResult verifyCode(String codeParam, String ip, String userAgent) {
+        // 1. [安全校验] 尝试解密
+        // 只有通过 AES 密钥成功解密的码才被认为是合法的入口
+        String realCodeValue = AesUtils.decrypt(codeParam);
 
-        // 1. 码不存在或作废
-        if (code == null || "1".equals(code.getStatus())) {
-            return AjaxResult.error(400, "防伪码不存在或已失效，请谨防假冒！");
+        // 如果解密结果为 null，说明 URL 参数被篡改，或者不是系统生成的合法密文
+        if (realCodeValue == null) {
+            return AjaxResult.error(400, "防伪码无法识别(校验失败)，系统判定为假冒产品！");
         }
 
-        // 2. 获取产品信息
+        // 2. [数据库校验] 根据解密后的 UUID 查库
+        TgTraceCode code = tgTraceCodeMapper.selectTgTraceCodeByCodeValue(realCodeValue);
+
+        // 码不存在 或 状态为作废 (status=1)
+        // [修改点]：状态检查逻辑升级
+        if (code == null) {
+            return AjaxResult.error(400, "防伪码不存在，请谨防假冒！");
+        }
+        // 检查状态
+        if ("1".equals(code.getStatus())) {
+            return AjaxResult.error(400, "该防伪码已作废，请注意辨别！");
+        }
+        // [新增]：如果状态是 2 (待激活)，拦截
+        if ("2".equals(code.getStatus())) {
+            return AjaxResult.error(400, "该防伪码尚未激活，请联系厂商核实！");
+        }
+        // 3. 获取关联产品信息
         TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("product", product);
         result.put("batchNo", code.getBatchNo());
 
-        // 3. 判断是否首次扫描
+        // 4. [溯源判定] 判断是否首次扫描
         if ("0".equals(code.getScanState())) {
-            // === 首次 ===
-            code.setScanState("1");
+            // === 首次扫码 (真品认证) ===
+            code.setScanState("1"); // 标记已扫
             code.setScanCount(1L);
             code.setFirstScanTime(DateUtils.getNowDate());
             code.setFirstScanIp(ip);
-            // 这里可以接入IP转地址工具
-            // code.setFirstScanLoc(AddressUtils.getRealAddressByIP(ip));
-
+            // TODO: 如果接入了 Ip2Region，可在此处解析 ip 对应的 firstScanLoc
             tgTraceCodeMapper.updateTgTraceCode(code);
-
-            result.put("authStatus", "SUCCESS"); // 正品
+            result.put("authStatus", "SUCCESS"); // 前端显示绿盾
             result.put("isFirst", true);
             result.put("scanTime", code.getFirstScanTime());
         } else {
-            // === 非首次 ===
+            // === 重复扫码 (防伪预警) ===
             code.setScanCount(code.getScanCount() + 1);
-            tgTraceCodeMapper.updateTgTraceCode(code);
+            tgTraceCodeMapper.updateTgTraceCode(code); // 仅更新次数
 
-            result.put("authStatus", "WARNING"); // 警告
+            result.put("authStatus", "WARNING"); // 前端显示红盾
             result.put("isFirst", false);
-            result.put("firstScanTime", code.getFirstScanTime());
+            result.put("firstScanTime", code.getFirstScanTime()); // 返回首次时间供比对
             result.put("scanCount", code.getScanCount());
         }
-
         return AjaxResult.success(result);
     }
 
@@ -147,8 +164,8 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     @Override
-    public List<TgTraceCode> selectBatchList(Long productId) {
-        return tgTraceCodeMapper.selectBatchList(productId);
+    public List<TgTraceCode> selectBatchList(TgTraceCode tgTraceCode) {
+        return tgTraceCodeMapper.selectBatchList(tgTraceCode);
     }
 
     @Override

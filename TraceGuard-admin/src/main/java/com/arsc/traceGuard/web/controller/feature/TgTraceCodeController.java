@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 
+import com.arsc.traceGuard.common.utils.StringUtils;
+import com.arsc.traceGuard.common.utils.sign.AesUtils;
 import com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq;
+import com.arsc.traceGuard.system.service.ISysConfigService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +31,9 @@ public class TgTraceCodeController extends BaseController
     @Autowired
     private ITgTraceCodeService tgTraceCodeService;
 
+    @Autowired
+    private ISysConfigService configService; // 注入配置服务
+
     /**
      * 查询防伪码列表 (全量查询，通常不推荐直接用，备用)
      */
@@ -43,10 +49,10 @@ public class TgTraceCodeController extends BaseController
      * 查询某产品的【生码批次】列表
      */
     @GetMapping("/batch/list")
-    public TableDataInfo listBatch(@RequestParam Long productId)
+    public TableDataInfo listBatch(TgTraceCode tgTraceCode)
     {
         // 这里不需要分页，或者手动假分页，因为是聚合结果
-        List<TgTraceCode> list = tgTraceCodeService.selectBatchList(productId);
+        List<TgTraceCode> list = tgTraceCodeService.selectBatchList(tgTraceCode);
         return getDataTable(list);
     }
 
@@ -66,18 +72,68 @@ public class TgTraceCodeController extends BaseController
     }
 
     /**
-     * 导出指定批次的防伪码 (给印刷厂)
+     * 导出指定批次的防伪码
      */
     @Log(title = "防伪码导出", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, Long productId, String batchNo)
+    public void export(HttpServletResponse response, TgTraceCode queryParams)
     {
-        List<TgTraceCode> list = tgTraceCodeService.selectListByBatch(productId, batchNo);
+        // 1. 从数据库参数配置中获取 H5 域名
+        // 键名必须与后台【参数设置】里配置的一致
+        String h5Domain = configService.selectConfigByKey("trace.h5.domain");
 
-        // 自定义导出内容，例如拼接URL
-        // 这里直接导出对象，ExcelUtil会自动读取 @Excel 注解
+        // 简单校验一下，防止管理员没配参数导致空指针
+        if (StringUtils.isEmpty(h5Domain)) {
+            // 这里虽然是 void 方法，但如果没配置直接打印日志或设个默认值
+            // 或者抛出异常提示前端
+            logger.warn("未配置参数 [trace.h5.domain]，使用默认空地址");
+            h5Domain = "";
+        }
+
+        // H5 页面路由 (这个通常是固定的，也可以配在参数里，这里暂时写死)
+        String h5Path = "/h5/verify";
+
+        // 2. 查询原始数据
+        List<TgTraceCode> list = tgTraceCodeService.selectListByBatch(queryParams.getProductId(), queryParams.getBatchNo());
+
+        // 3. 拼接 URL + 加密
+        String baseUrl = h5Domain + h5Path + "?c=";
+
+        for (TgTraceCode code : list) {
+            // 加密
+            String encryptedCode = AesUtils.encrypt(code.getCodeValue());
+            // 拼接
+            code.setQrCodeUrl(baseUrl + encryptedCode);
+        }
+
+        // 4. 导出
         ExcelUtil<TgTraceCode> util = new ExcelUtil<TgTraceCode>(TgTraceCode.class);
-        util.exportExcel(response, list, "防伪码_" + batchNo);
+        util.exportExcel(response, list, "防伪二维码数据_" + queryParams.getBatchNo());
+    }
+
+    /**
+     * 获取防伪码的二维码内容 (用于前端预览)
+     */
+    @GetMapping("/qr/{codeId}")
+    public AjaxResult getQrCodeContent(@PathVariable("codeId") Long codeId)
+    {
+        TgTraceCode code = tgTraceCodeService.selectTgTraceCodeByCodeId(codeId);
+        if (code == null) {
+            return error("防伪码不存在");
+        }
+
+        // 1. 获取 H5 域名
+        String h5Domain = configService.selectConfigByKey("trace.h5.domain");
+        if (StringUtils.isEmpty(h5Domain)) {
+            return error("请先在参数设置中配置防伪H5域名 [trace.h5.domain]");
+        }
+
+        // 2. 加密并拼接
+        String h5Path = "/h5/verify";
+        String encryptedCode = AesUtils.encrypt(code.getCodeValue());
+        String fullUrl = h5Domain + h5Path + "?c=" + encryptedCode;
+
+        return success( fullUrl);
     }
 
     /**
