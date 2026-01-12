@@ -41,103 +41,174 @@ public class TgProduct extends BaseEntity
     /** 删除标志 */
     private String delFlag;
 
+    /** 质检参数 (JSON) */
+    private String qualityJson;
 
-    public void setProductId(Long productId) 
-    {
-        this.productId = productId;
+    /** 检测报告PDF文件 */
+    private String reportFile;
+
+    /** 检测报告预览图 */
+    private String reportImage;
+
+    /** 使用攻略 (富文本) */
+    private String usageContent;
+
+    /** 企业简介 (富文本) */
+    private String companyContent;
+
+    /** 产品图片*/
+    private String productImage;
+
+    /**公司地址*/
+    private String address;
+
+    /**公司logo*/
+    private String companyLogo;
+
+    public String getProductImage() {
+        return productImage;
     }
 
-    public Long getProductId() 
-    {
+    public void setProductImage(String productImage) {
+        this.productImage = productImage;
+    }
+
+    public Long getProductId() {
         return productId;
     }
 
-    public void setProductName(String productName) 
-    {
-        this.productName = productName;
+    public void setProductId(Long productId) {
+        this.productId = productId;
     }
 
-    public String getProductName() 
-    {
+    public String getProductName() {
         return productName;
     }
 
-    public void setInstruction(String instruction) 
-    {
-        this.instruction = instruction;
+    public void setProductName(String productName) {
+        this.productName = productName;
     }
 
-    public String getInstruction() 
-    {
+    public String getInstruction() {
         return instruction;
     }
 
-    public void setReportImg(String reportImg) 
-    {
-        this.reportImg = reportImg;
+    public void setInstruction(String instruction) {
+        this.instruction = instruction;
     }
 
-    public String getReportImg() 
-    {
+    public String getReportImg() {
         return reportImg;
     }
 
-    public void setCompanyInfo(String companyInfo) 
-    {
-        this.companyInfo = companyInfo;
+    public void setReportImg(String reportImg) {
+        this.reportImg = reportImg;
     }
 
-    public String getCompanyInfo() 
-    {
+    public String getCompanyInfo() {
         return companyInfo;
     }
 
-    public void setContactUs(String contactUs) 
-    {
-        this.contactUs = contactUs;
+    public void setCompanyInfo(String companyInfo) {
+        this.companyInfo = companyInfo;
     }
 
-    public String getContactUs() 
-    {
+    public String getContactUs() {
         return contactUs;
     }
 
-    public void setStatus(String status) 
-    {
-        this.status = status;
+    public void setContactUs(String contactUs) {
+        this.contactUs = contactUs;
     }
 
-    public String getStatus() 
-    {
+    public String getStatus() {
         return status;
     }
 
-    public void setDelFlag(String delFlag) 
-    {
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDelFlag() {
+        return delFlag;
+    }
+
+    public void setDelFlag(String delFlag) {
         this.delFlag = delFlag;
     }
 
-    public String getDelFlag() 
-    {
-        return delFlag;
+    public String getQualityJson() {
+        return qualityJson;
+    }
+
+    public void setQualityJson(String qualityJson) {
+        this.qualityJson = qualityJson;
+    }
+
+    public String getReportFile() {
+        return reportFile;
+    }
+
+    public void setReportFile(String reportFile) {
+        this.reportFile = reportFile;
+    }
+
+    public String getReportImage() {
+        return reportImage;
+    }
+
+    public void setReportImage(String reportImage) {
+        this.reportImage = reportImage;
+    }
+
+    public String getUsageContent() {
+        return usageContent;
+    }
+
+    public void setUsageContent(String usageContent) {
+        this.usageContent = usageContent;
+    }
+
+    public String getCompanyContent() {
+        return companyContent;
+    }
+
+    public void setCompanyContent(String companyContent) {
+        this.companyContent = companyContent;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getCompanyLogo() {
+        return companyLogo;
+    }
+
+    public void setCompanyLogo(String companyLogo) {
+        this.companyLogo = companyLogo;
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("productId", getProductId())
-            .append("productName", getProductName())
-            .append("instruction", getInstruction())
-            .append("reportImg", getReportImg())
-            .append("companyInfo", getCompanyInfo())
-            .append("contactUs", getContactUs())
-            .append("status", getStatus())
-            .append("delFlag", getDelFlag())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .append("remark", getRemark())
-            .toString();
+        return "TgProduct{" +
+                "productId=" + productId +
+                ", productName='" + productName + '\'' +
+                ", instruction='" + instruction + '\'' +
+                ", reportImg='" + reportImg + '\'' +
+                ", companyInfo='" + companyInfo + '\'' +
+                ", contactUs='" + contactUs + '\'' +
+                ", status='" + status + '\'' +
+                ", delFlag='" + delFlag + '\'' +
+                ", qualityJson='" + qualityJson + '\'' +
+                ", reportFile='" + reportFile + '\'' +
+                ", reportImage='" + reportImage + '\'' +
+                ", usageContent='" + usageContent + '\'' +
+                ", companyContent='" + companyContent + '\'' +
+                '}';
     }
 }

@@ -13,7 +13,7 @@ import java.util.Map;
  * 消费者H5端专用接口 (无需登录)
  */
 @RestController
-@RequestMapping("/api/h5")
+@RequestMapping("/h5")
 public class TgH5Controller {
 
     @Autowired
@@ -23,9 +23,8 @@ public class TgH5Controller {
      * 扫码验证接口
      * URL: /api/h5/verify
      */
-    @PostMapping("/verify")
-    public AjaxResult verify(@RequestBody Map<String, String> body, HttpServletRequest request) {
-        String code = body.get("code");
+    @GetMapping("/verify")
+    public AjaxResult verify(@RequestParam("code")String code, HttpServletRequest request) {
         if (code == null) {
             return AjaxResult.error("无效的防伪码");
         }

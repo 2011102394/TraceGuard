@@ -7,10 +7,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="TgProduct" id="TgProductResult">
         <result property="productId"    column="product_id"    />
         <result property="productName"    column="product_name"    />
+        <result property="productImage" column="product_image" />
         <result property="instruction"    column="instruction"    />
         <result property="reportImg"    column="report_img"    />
         <result property="companyInfo"    column="company_info"    />
         <result property="contactUs"    column="contact_us"    />
+        <result property="qualityJson"    column="quality_json" />
+        <result property="reportFile"     column="report_file" />
+        <result property="reportImage"    column="report_image" />
+        <result property="usageContent"   column="usage_content" />
+        <result property="companyContent" column="company_content" />
+        <result property="companyLogo" column="company_logo" />
+        <result property="address" column="address" />
         <result property="status"    column="status"    />
         <result property="delFlag"    column="del_flag"    />
         <result property="createBy"    column="create_by"    />
@@ -21,7 +29,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTgProductVo">
-        select product_id, product_name, instruction, report_img, company_info, contact_us, status, del_flag, create_by, create_time, update_by, update_time, remark from tg_product
+        select product_id, product_name, product_image, instruction, report_img, company_info, contact_us, status,
+        quality_json, report_file, report_image, usage_content, company_content,address,company_logo,
+        del_flag, create_by, create_time, update_by, update_time, remark from tg_product
     </sql>
 
     <select id="selectTgProductList" parameterType="TgProduct" resultMap="TgProductResult">
@@ -47,11 +57,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="contactUs != null">contact_us,</if>
             <if test="status != null">status,</if>
             <if test="delFlag != null">del_flag,</if>
+            <if test="productImage != null">product_image,</if>
+            <if test="qualityJson != null">quality_json,</if>
+            <if test="reportFile != null">report_file,</if>
+            <if test="reportImage != null">report_image,</if>
+            <if test="usageContent != null">usage_content,</if>
+            <if test="companyContent != null">company_content,</if>
+            <if test="address != null">address,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateBy != null">update_by,</if>
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
+            <if test="companyLogo != null">company_logo,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="productName != null and productName != ''">#{productName},</if>
@@ -61,11 +79,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="contactUs != null">#{contactUs},</if>
             <if test="status != null">#{status},</if>
             <if test="delFlag != null">#{delFlag},</if>
+            <if test="productImage != null">#{productImage},</if>
+            <if test="qualityJson != null">#{qualityJson},</if>
+            <if test="reportFile != null">#{reportFile},</if>
+            <if test="reportImage != null">#{reportImage},</if>
+            <if test="usageContent != null">#{usageContent},</if>
+            <if test="companyContent != null">#{companyContent},</if>
+            <if test="address != null">#{address},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateBy != null">#{updateBy},</if>
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
+            <if test="companyLogo != null">#{company_logo},</if>
          </trim>
     </insert>
 
@@ -79,11 +105,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="contactUs != null">contact_us = #{contactUs},</if>
             <if test="status != null">status = #{status},</if>
             <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="productImage != null">product_image = #{productImage},</if>
+            <if test="qualityJson != null">quality_json = #{qualityJson},</if>
+            <if test="reportFile != null">report_file = #{reportFile},</if>
+            <if test="reportImage != null">report_image = #{reportImage},</if>
+            <if test="usageContent != null">usage_content = #{usageContent},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="companyContent != null">company_content = #{companyContent},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="remark != null">remark = #{remark},</if>
+            <if test="companyLogo != null">company_logo = #{companyLogo},</if>
         </trim>
         where product_id = #{productId}
     </update>
