@@ -6,7 +6,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.arsc.traceGuard.common.utils.ip.AddressUtils;
 import com.arsc.traceGuard.common.utils.sign.AesUtils;
+import com.arsc.traceGuard.feature.domain.TgScanLog;
+import com.arsc.traceGuard.feature.service.ITgScanLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,9 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
 
     @Autowired
     private TgProductMapper tgProductMapper;
+
+    @Autowired
+    private ITgScanLogService scanLogService;
 
     /**
      * 批量生成防伪码实现
@@ -68,65 +74,100 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     /**
-     * 核心扫码验证逻辑 (严格加密模式)
+     * 核心扫码验证逻辑 (集成扫码日志记录 + 地理位置返回)
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AjaxResult verifyCode(String codeParam, String ip, String userAgent) {
-        // 1. [安全校验] 尝试解密
-        // 只有通过 AES 密钥成功解密的码才被认为是合法的入口
-        String realCodeValue = AesUtils.decrypt(codeParam);
+        // Step 0: 预备日志对象
+        TgScanLog scanLog = new TgScanLog();
+        scanLog.setScanIp(ip);
+        scanLog.setBrowserInfo(userAgent);
+        scanLog.setCreateTime(DateUtils.getNowDate());
 
-        // 如果解密结果为 null，说明 URL 参数被篡改，或者不是系统生成的合法密文
+        // 解析当前扫码的地理位置
+        String realAddress = AddressUtils.getRealAddressByIP(ip);
+        scanLog.setScanLocation(realAddress);
+
+        // Step 1: 解密
+        String realCodeValue = null;
+        try {
+            realCodeValue = AesUtils.decrypt(codeParam);
+        } catch (Exception e) { /* ignore */ }
+
         if (realCodeValue == null) {
+            scanLog.setCodeValue(codeParam);
+            scanLog.setStatus("1");
+            scanLog.setRemark("防伪码无法识别(解密失败)");
+            scanLogService.insertTgScanLog(scanLog);
             return AjaxResult.error(400, "防伪码无法识别(校验失败)，系统判定为假冒产品！");
         }
+        scanLog.setCodeValue(realCodeValue);
 
-        // 2. [数据库校验] 根据解密后的 UUID 查库
+        // Step 2: 查库
         TgTraceCode code = tgTraceCodeMapper.selectTgTraceCodeByCodeValue(realCodeValue);
 
-        // 码不存在 或 状态为作废 (status=1)
-        // [修改点]：状态检查逻辑升级
         if (code == null) {
+            scanLog.setStatus("1");
+            scanLog.setRemark("防伪码不存在");
+            scanLogService.insertTgScanLog(scanLog);
             return AjaxResult.error(400, "防伪码不存在，请谨防假冒！");
         }
-        // 检查状态
+
         if ("1".equals(code.getStatus())) {
+            scanLog.setStatus("1");
+            scanLog.setRemark("防伪码已作废");
+            scanLogService.insertTgScanLog(scanLog);
             return AjaxResult.error(400, "该防伪码已作废，请注意辨别！");
         }
-        // [新增]：如果状态是 2 (待激活)，拦截
+
         if ("2".equals(code.getStatus())) {
+            scanLog.setStatus("1");
+            scanLog.setRemark("防伪码待激活");
+            scanLogService.insertTgScanLog(scanLog);
             return AjaxResult.error(400, "该防伪码尚未激活，请联系厂商核实！");
         }
-        // 3. 获取关联产品信息
+
+        // Step 3: 正常日志
+        scanLog.setStatus("0");
+        scanLog.setRemark("扫码验证成功");
+        scanLogService.insertTgScanLog(scanLog);
+
         TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("product", product);
         result.put("batchNo", code.getBatchNo());
 
-        // 4. [溯源判定] 判断是否首次扫描
+        // Step 4: 首次 vs 重复
         if ("0".equals(code.getScanState())) {
-            // === 首次扫码 (真品认证) ===
-            code.setScanState("1"); // 标记已扫
+            // === 首次扫码 ===
+            code.setScanState("1");
             code.setScanCount(1L);
             code.setFirstScanTime(DateUtils.getNowDate());
             code.setFirstScanIp(ip);
-            // TODO: 如果接入了 Ip2Region，可在此处解析 ip 对应的 firstScanLoc
+            code.setFirstScanLoc(realAddress); // [关键] 保存首次位置
+
             tgTraceCodeMapper.updateTgTraceCode(code);
-            result.put("authStatus", "SUCCESS"); // 前端显示绿盾
+
+            result.put("authStatus", "SUCCESS");
             result.put("isFirst", true);
             result.put("scanTime", code.getFirstScanTime());
+            result.put("firstScanLoc", realAddress); // 返回当前位置
         } else {
-            // === 重复扫码 (防伪预警) ===
+            // === 重复扫码 ===
             code.setScanCount(code.getScanCount() + 1);
-            tgTraceCodeMapper.updateTgTraceCode(code); // 仅更新次数
+            tgTraceCodeMapper.updateTgTraceCode(code);
 
-            result.put("authStatus", "WARNING"); // 前端显示红盾
+            result.put("authStatus", "WARNING");
             result.put("isFirst", false);
-            result.put("firstScanTime", code.getFirstScanTime()); // 返回首次时间供比对
+            result.put("firstScanTime", code.getFirstScanTime());
             result.put("scanCount", code.getScanCount());
+
+            // [新增] 返回首次扫码的地理位置
+            result.put("firstScanLoc", code.getFirstScanLoc());
         }
+
         return AjaxResult.success(result);
     }
 
@@ -135,7 +176,6 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         return tgTraceCodeMapper.selectTraceCodeStats(tgTraceCode);
     }
 
-    // --- 标准CRUD实现 ---
 
     @Override
     public TgTraceCode selectTgTraceCodeByCodeId(Long codeId) {

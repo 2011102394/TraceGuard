@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.arsc.traceGuard.feature.mapper.TgScanLogMapper">
+
+    <resultMap type="TgScanLog" id="TgScanLogResult">
+        <result property="logId"    column="log_id"    />
+        <result property="codeValue"    column="code_value"    />
+        <result property="scanIp"    column="scan_ip"    />
+        <result property="scanLocation"    column="scan_location"    />
+        <result property="browserInfo"    column="browser_info"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectTgScanLogVo">
+        select log_id, code_value, scan_ip, scan_location, browser_info, status, create_by, create_time, update_by, update_time, remark from tg_scan_log
+    </sql>
+
+    <select id="selectTgScanLogList" parameterType="TgScanLog" resultMap="TgScanLogResult">
+        <include refid="selectTgScanLogVo"/>
+        <where>
+            <if test="codeValue != null  and codeValue != ''"> and code_value like concat('%', #{codeValue}, '%')</if>
+            <if test="scanIp != null  and scanIp != ''"> and scan_ip like concat('%', #{scanIp}, '%')</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">and create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">and create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectTgScanLogByLogId" parameterType="Long" resultMap="TgScanLogResult">
+        <include refid="selectTgScanLogVo"/>
+        where log_id = #{logId}
+    </select>
+
+    <insert id="insertTgScanLog" parameterType="TgScanLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into tg_scan_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="codeValue != null and codeValue != ''">code_value,</if>
+            <if test="scanIp != null">scan_ip,</if>
+            <if test="scanLocation != null">scan_location,</if>
+            <if test="browserInfo != null">browser_info,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="codeValue != null and codeValue != ''">#{codeValue},</if>
+            <if test="scanIp != null">#{scanIp},</if>
+            <if test="scanLocation != null">#{scanLocation},</if>
+            <if test="browserInfo != null">#{browserInfo},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updateTgScanLog" parameterType="TgScanLog">
+        update tg_scan_log
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="codeValue != null and codeValue != ''">code_value = #{codeValue},</if>
+            <if test="scanIp != null">scan_ip = #{scanIp},</if>
+            <if test="scanLocation != null">scan_location = #{scanLocation},</if>
+            <if test="browserInfo != null">browser_info = #{browserInfo},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where log_id = #{logId}
+    </update>
+
+    <delete id="deleteTgScanLogByLogId" parameterType="Long">
+        delete from tg_scan_log where log_id = #{logId}
+    </delete>
+
+    <delete id="deleteTgScanLogByLogIds" parameterType="String">
+        delete from tg_scan_log where log_id in
+        <foreach item="logId" collection="array" open="(" separator="," close=")">
+            #{logId}
+        </foreach>
+    </delete>
+</mapper>
