@@ -97,7 +97,7 @@
         insert into tg_trace_code (product_id, code_value, batch_no, scan_state, scan_count, status, create_by, create_time)
         values
         <foreach collection="list" item="item" separator=",">
-            (#{item.productId}, #{item.codeValue}, #{item.batchNo}, '0', 0, '0', #{item.createBy}, sysdate())
+            (#{item.productId}, #{item.codeValue}, #{item.batchNo}, '0', 0, '2', #{item.createBy}, sysdate())
         </foreach>
     </insert>
 

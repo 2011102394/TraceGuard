@@ -42,6 +42,7 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
 
     /**
      * 批量生成防伪码实现
+     * 修改规则：总长度24位，批次号_补零_从1开始的流水号
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -49,14 +50,38 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         List<TgTraceCode> buffer = new ArrayList<>();
         String creator = SecurityUtils.getUsername();
 
-        for (int i = 0; i < count; i++) {
+        // 1. 准备前缀 (批次号 + "_")
+        String safeBatchNo = (batchNo == null) ? "" : batchNo;
+        String prefix = safeBatchNo + "_";
+
+        // 2. 计算流水号可用长度 (总长24 - 前缀长度)
+        int totalLength = 24;
+        int seqLength = totalLength - prefix.length();
+
+        // 3. 校验长度是否合法
+        if (seqLength <= 0) {
+            throw new RuntimeException("生成失败：批次号[" + safeBatchNo + "]过长，无法满足24位防伪码要求");
+        }
+        // 校验生成的数量是否会导致流水号溢出 (例如只有3位空间却要生成2000个)
+        if (String.valueOf(count).length() > seqLength) {
+            throw new RuntimeException("生成失败：生成数量[" + count + "]超出当前批次号剩余长度限制");
+        }
+
+        // 4. 定义格式化模板，例如 "%015d" 代表补零至15位整数
+        String formatPattern = "%0" + seqLength + "d";
+
+        // 5. 循环生成 (从1开始)
+        for (int i = 1; i <= count; i++) {
             TgTraceCode code = new TgTraceCode();
             code.setProductId(productId);
-            code.setBatchNo(batchNo);
-            code.setStatus("2");
-            code.setScanState("0");
-            // 使用简化的UUID作为防伪码值 (去掉了横线)
-            code.setCodeValue(IdUtils.simpleUUID());
+            code.setBatchNo(safeBatchNo);
+            code.setStatus("2"); // 默认状态：待激活
+            code.setScanState("0"); // 扫码状态：未扫码
+
+            // 核心修改：生成固定格式 codeValue
+            String seq = String.format(formatPattern, i);
+            code.setCodeValue(prefix + seq);
+
             code.setCreateBy(creator);
 
             buffer.add(code);
@@ -96,6 +121,8 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         } catch (Exception e) { /* ignore */ }
 
         if (realCodeValue == null) {
+            // 尝试直接使用明文（兼容某些场景下未加密的传输，视业务需求而定，这里保持原逻辑主要依靠解密）
+            // 如果解密失败，通常认为是伪造的链接参数
             scanLog.setCodeValue(codeParam);
             scanLog.setStatus("1");
             scanLog.setRemark("防伪码无法识别(解密失败)");
