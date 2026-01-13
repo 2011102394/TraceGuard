@@ -97,7 +97,7 @@ public class TgTraceCodeController extends BaseController
         List<TgTraceCode> list = tgTraceCodeService.selectListByBatch(queryParams.getProductId(), queryParams.getBatchNo());
 
         // 3. 拼接 URL + 加密
-        String baseUrl = h5Domain + h5Path + "?c=";
+        String baseUrl = h5Domain + h5Path + "?code=";
 
         for (TgTraceCode code : list) {
             // 加密
@@ -131,7 +131,7 @@ public class TgTraceCodeController extends BaseController
         // 2. 加密并拼接
         String h5Path = "/h5/verify";
         String encryptedCode = AesUtils.encrypt(code.getCodeValue());
-        String fullUrl = h5Domain + h5Path + "?c=" + encryptedCode;
+        String fullUrl = h5Domain + h5Path + "?code=" + encryptedCode;
 
         return success( fullUrl);
     }
