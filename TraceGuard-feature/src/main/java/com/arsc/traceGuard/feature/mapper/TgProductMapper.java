@@ -58,4 +58,6 @@ public interface TgProductMapper
      * @return 结果
      */
     public int deleteTgProductByProductIds(Long[] productIds);
+
+    public Long countTotalProduct();
 }

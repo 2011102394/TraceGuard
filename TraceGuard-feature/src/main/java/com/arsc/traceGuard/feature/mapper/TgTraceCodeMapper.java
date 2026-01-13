@@ -80,4 +80,8 @@ public interface TgTraceCodeMapper
      * @return
      */
     public List<TgTraceCode> selectListByBatch(@Param("productId") Long productId, @Param("batchNo") String batchNo);
+
+    public Long countTotalCode();
+
+    public List<Map<String, Object>> selectProductScanRank();
 }

@@ -96,4 +96,35 @@
             #{logId}
         </foreach>
     </delete>
+
+    <select id="countTotalScan" resultType="Long">
+        select count(*) from tg_scan_log
+    </select>
+
+    <select id="countAbnormalScan" resultType="Long">
+        select count(*) from tg_scan_log where status = '1'
+    </select>
+
+    <select id="selectScanTrend" resultType="java.util.Map">
+        SELECT
+        DATE_FORMAT(create_time, '%Y-%m-%d') as dateStr,
+        COUNT(*) as count
+        FROM tg_scan_log
+        WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY dateStr
+        ORDER BY dateStr ASC
+    </select>
+
+    <select id="selectRecentLogs" resultType="java.util.Map">
+        select log_id as logId, code_value as codeValue, scan_location as scanLocation, status as status, create_time as createTime
+        from tg_scan_log
+        order by create_time desc
+        limit 10
+    </select>
+
+    <select id="selectLocationList" resultType="String">
+        SELECT scan_location
+        FROM tg_scan_log
+        WHERE scan_location IS NOT NULL AND scan_location != ''
+    </select>
 </mapper>

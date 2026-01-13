@@ -193,4 +193,19 @@
             </if>
         </where>
     </select>
+    <select id="countTotalCode" resultType="Long">
+        select count(*) from tg_trace_code
+    </select>
+
+    <select id="selectProductScanRank" resultType="java.util.Map">
+        SELECT
+        p.product_name as name,
+        SUM(c.scan_count) as value
+        FROM tg_trace_code c
+        LEFT JOIN tg_product p ON c.product_id = p.product_id
+        WHERE c.scan_count > 0
+        GROUP BY p.product_name
+        ORDER BY value DESC
+        LIMIT 5
+    </select>
 </mapper>

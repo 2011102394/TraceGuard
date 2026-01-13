@@ -1,6 +1,8 @@
 package com.arsc.traceGuard.feature.mapper;
 
 import java.util.List;
+import java.util.Map;
+
 import com.arsc.traceGuard.feature.domain.TgScanLog;
 
 /**
@@ -37,4 +39,15 @@ public interface TgScanLogMapper
      * 批量删除防伪扫描记录
      */
     public int deleteTgScanLogByLogIds(Long[] logIds);
+
+    public Long countTotalScan();
+
+    public Long countAbnormalScan();
+
+    public List<Map<String, Object>> selectScanTrend();
+
+    public List<Map<String, Object>> selectRecentLogs();
+
+    public List<String> selectLocationList();
+
 }

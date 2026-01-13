@@ -132,4 +132,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{productId}
         </foreach>
     </delete>
+
+    <select id="countTotalProduct" resultType="Long">
+        select count(*) from tg_product
+    </select>
 </mapper>
