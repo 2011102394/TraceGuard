@@ -1,28 +1,25 @@
 package com.arsc.traceGuard.feature.service.impl;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.arsc.traceGuard.common.core.domain.AjaxResult;
+import com.arsc.traceGuard.common.utils.DateUtils;
 import com.arsc.traceGuard.common.utils.ip.AddressUtils;
+import com.arsc.traceGuard.common.utils.ip.IpUtils;
 import com.arsc.traceGuard.common.utils.sign.AesUtils;
+import com.arsc.traceGuard.feature.domain.TgProduct;
 import com.arsc.traceGuard.feature.domain.TgScanLog;
+import com.arsc.traceGuard.feature.domain.TgTraceCode;
+import com.arsc.traceGuard.feature.mapper.TgProductMapper;
+import com.arsc.traceGuard.feature.mapper.TgTraceCodeMapper;
 import com.arsc.traceGuard.feature.service.ITgScanLogService;
+import com.arsc.traceGuard.feature.service.ITgTraceCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.arsc.traceGuard.common.core.domain.AjaxResult;
-import com.arsc.traceGuard.common.utils.DateUtils;
-import com.arsc.traceGuard.common.utils.SecurityUtils;
-import com.arsc.traceGuard.common.utils.uuid.IdUtils;
-import com.arsc.traceGuard.feature.domain.TgProduct;
-import com.arsc.traceGuard.feature.domain.TgTraceCode;
-import com.arsc.traceGuard.feature.mapper.TgProductMapper;
-import com.arsc.traceGuard.feature.mapper.TgTraceCodeMapper;
-import com.arsc.traceGuard.feature.service.ITgTraceCodeService;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 防伪码管理 Service业务层处理
@@ -128,8 +125,13 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         scanLog.setBrowserInfo(userAgent);
         scanLog.setCreateTime(DateUtils.getNowDate());
 
-        // 解析当前扫码的地理位置
-        String realAddress = AddressUtils.getRealAddressByIP(ip);
+        // [修改点1] 解析地理位置：如果是内网IP，默认西安；否则查询真实地址
+        String realAddress;
+        if (IpUtils.internalIp(ip)) {
+            realAddress = "陕西省西安市";
+        } else {
+            realAddress = AddressUtils.getRealAddressByIP(ip);
+        }
         scanLog.setScanLocation(realAddress);
 
         // Step 1: 解密
@@ -139,8 +141,7 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         } catch (Exception e) { /* ignore */ }
 
         if (realCodeValue == null) {
-            // 尝试直接使用明文（兼容某些场景下未加密的传输，视业务需求而定，这里保持原逻辑主要依靠解密）
-            // 如果解密失败，通常认为是伪造的链接参数
+            // 尝试直接使用明文
             scanLog.setCodeValue(codeParam);
             scanLog.setStatus("1");
             scanLog.setRemark("防伪码无法识别(解密失败)");
@@ -173,45 +174,50 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
             return AjaxResult.error(400, "该防伪码尚未激活，请联系厂商核实！");
         }
 
-        // Step 3: 正常日志
-        scanLog.setStatus("0");
-        scanLog.setRemark("扫码验证成功");
-        scanLogService.insertTgScanLog(scanLog);
-
+        // Step 3: 准备返回数据
         TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
-
         Map<String, Object> result = new HashMap<>();
         result.put("product", product);
         result.put("batchNo", code.getBatchNo());
 
-        // Step 4: 首次 vs 重复
+        // Step 4: 首次 vs 重复 (修改点：根据扫码情况设置日志状态和备注)
         if ("0".equals(code.getScanState())) {
             // === 首次扫码 ===
             code.setScanState("1");
             code.setScanCount(1L);
             code.setFirstScanTime(DateUtils.getNowDate());
             code.setFirstScanIp(ip);
-            code.setFirstScanLoc(realAddress); // [关键] 保存首次位置
+            code.setFirstScanLoc(realAddress);
 
             tgTraceCodeMapper.updateTgTraceCode(code);
+
+            // [修改点2] 首次扫码日志状态为正常
+            scanLog.setStatus("0");
+            scanLog.setRemark("扫码验证成功");
 
             result.put("authStatus", "SUCCESS");
             result.put("isFirst", true);
             result.put("scanTime", code.getFirstScanTime());
-            result.put("firstScanLoc", realAddress); // 返回当前位置
+            result.put("firstScanLoc", realAddress);
         } else {
             // === 重复扫码 ===
-            code.setScanCount(code.getScanCount() + 1);
+            long newCount = code.getScanCount() + 1;
+            code.setScanCount(newCount);
             tgTraceCodeMapper.updateTgTraceCode(code);
+
+            // [修改点3] 重复扫码日志状态为异常，并备注次数
+            scanLog.setStatus("1");
+            scanLog.setRemark("第" + newCount + "次扫码(重复扫描警告)");
 
             result.put("authStatus", "WARNING");
             result.put("isFirst", false);
             result.put("firstScanTime", code.getFirstScanTime());
-            result.put("scanCount", code.getScanCount());
-
-            // [新增] 返回首次扫码的地理位置
+            result.put("scanCount", newCount);
             result.put("firstScanLoc", code.getFirstScanLoc());
         }
+
+        // [修改点4] 最后统一插入日志，确保状态和备注正确
+        scanLogService.insertTgScanLog(scanLog);
 
         return AjaxResult.success(result);
     }
