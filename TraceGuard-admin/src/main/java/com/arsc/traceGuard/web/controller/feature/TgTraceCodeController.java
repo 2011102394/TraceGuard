@@ -2,11 +2,13 @@ package com.arsc.traceGuard.web.controller.feature;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TimerTask;
 import javax.servlet.http.HttpServletResponse;
 
 import com.arsc.traceGuard.common.utils.StringUtils;
 import com.arsc.traceGuard.common.utils.sign.AesUtils;
 import com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq;
+import com.arsc.traceGuard.framework.manager.AsyncManager;
 import com.arsc.traceGuard.system.service.ISysConfigService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,18 +59,32 @@ public class TgTraceCodeController extends BaseController
     }
 
     /**
-     * 批量生成防伪码
+     * 生成防伪码 (异步优化版)
      */
-    @Log(title = "防伪码生码", businessType = BusinessType.INSERT)
+    @Log(title = "防伪码管理", businessType = BusinessType.INSERT)
     @PostMapping("/generate")
-    public AjaxResult generate(@RequestBody CodeGenerateReq req)
+    public AjaxResult generate(@RequestBody com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq req)
     {
-        if (req.getProductId() == null || req.getCount() == null || req.getCount() <= 0) {
-            return error("参数错误");
-        }
-        // 建议：对于超过1万条的生码，建议放入线程池异步执行
-        tgTraceCodeService.generateCodes(req.getProductId(), req.getBatchNo(), req.getCount());
-        return success("生码任务已完成，请刷新列表");
+        // 1. 获取当前登录用户名 (必须在主线程获取)
+        String currentUsername = getUsername();
+
+        // 2. 使用 RuoYi 的异步管理器执行任务
+        AsyncManager.me().execute(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    // 调用 Service，传入用户名
+                    tgTraceCodeService.generateCodes(req.getProductId(), req.getBatchNo(), req.getCount(), currentUsername);
+                } catch (Exception e) {
+                    // 异步任务中的异常建议记录日志，或者通过消息通知用户(如有)
+                    e.printStackTrace();
+                    logger.error("后台生码任务失败: {}", e.getMessage());
+                }
+            }
+        });
+
+        // 3. 立即返回，不等待任务结束
+        return AjaxResult.success("生码任务已提交后台处理，请稍候刷新列表查看结果");
     }
 
     /**
@@ -165,4 +181,39 @@ public class TgTraceCodeController extends BaseController
         return success(stats);
     }
 
+    /**
+     * 修改防伪码管理 (用于单个激活、作废等操作)
+     */
+    @Log(title = "防伪码管理", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@RequestBody TgTraceCode tgTraceCode)
+    {
+        return toAjax(tgTraceCodeService.updateTgTraceCode(tgTraceCode));
+    }
+
+    /**
+     * 批量修改防伪码状态 (整批激活/作废)
+     */
+    @Log(title = "防伪码管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/batch/status")
+    public AjaxResult updateBatchStatus(@RequestBody TgTraceCode tgTraceCode)
+    {
+        if (StringUtils.isEmpty(tgTraceCode.getBatchNo())) {
+            return AjaxResult.error("批次号不能为空");
+        }
+        if (StringUtils.isEmpty(tgTraceCode.getStatus())) {
+            return AjaxResult.error("目标状态不能为空");
+        }
+        return toAjax(tgTraceCodeService.updateBatchStatus(tgTraceCode.getBatchNo(), tgTraceCode.getStatus()));
+    }
+
+    /**
+     * 删除批次 (删除该批次下所有防伪码)
+     */
+    @Log(title = "防伪码管理", businessType = BusinessType.DELETE)
+    @DeleteMapping("/batch/{batchNo}")
+    public AjaxResult removeBatch(@PathVariable String batchNo)
+    {
+        return toAjax(tgTraceCodeService.deleteTraceCodeByBatchNo(batchNo));
+    }
 }

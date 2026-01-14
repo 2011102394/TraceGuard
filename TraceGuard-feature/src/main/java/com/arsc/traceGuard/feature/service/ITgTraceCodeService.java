@@ -28,13 +28,13 @@ public interface ITgTraceCodeService
     public List<TgTraceCode> selectTgTraceCodeList(TgTraceCode tgTraceCode);
 
     /**
-     * 批量生成防伪码 (核心业务)
+     * 批量生成防伪码
      * @param productId 产品ID
      * @param batchNo 批次号
      * @param count 数量
-     * @return 生成结果消息
+     * @param createBy 创建人 (新增参数)
      */
-    public void generateCodes(Long productId, String batchNo, Integer count);
+    public void generateCodes(Long productId, String batchNo, Integer count, String createBy);
 
     /**
      * 验证防伪码 (H5调用)
@@ -66,4 +66,19 @@ public interface ITgTraceCodeService
     public List<TgTraceCode> selectListByBatch(Long productId, String batchNo);
 
     public Map<String, Object> selectTraceCodeStats(TgTraceCode tgTraceCode);
+
+    /**
+     * 批量修改防伪码状态
+     * * @param batchNo 批次号
+     * @param status 状态
+     * @return 结果
+     */
+    public int updateBatchStatus(String batchNo, String status);
+
+    /**
+     * 删除指定批次的所有防伪码
+     * @param batchNo 批次号
+     * @return 结果
+     */
+    public int deleteTraceCodeByBatchNo(String batchNo);
 }

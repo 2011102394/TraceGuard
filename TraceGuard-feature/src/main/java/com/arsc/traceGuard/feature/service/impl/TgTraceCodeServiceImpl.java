@@ -41,14 +41,13 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     private ITgScanLogService scanLogService;
 
     /**
-     * 批量生成防伪码实现
-     * 修改规则：总长度24位，批次号_补零_从1开始的流水号
+     * 批量生成防伪码实现 (支持追加生成)
+     * 规则：总长度24位，批次号_补零_流水号
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void generateCodes(Long productId, String batchNo, Integer count) {
+    public void generateCodes(Long productId, String batchNo, Integer count,String createBy) {
         List<TgTraceCode> buffer = new ArrayList<>();
-        String creator = SecurityUtils.getUsername();
 
         // 1. 准备前缀 (批次号 + "_")
         String safeBatchNo = (batchNo == null) ? "" : batchNo;
@@ -62,37 +61,56 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         if (seqLength <= 0) {
             throw new RuntimeException("生成失败：批次号[" + safeBatchNo + "]过长，无法满足24位防伪码要求");
         }
-        // 校验生成的数量是否会导致流水号溢出 (例如只有3位空间却要生成2000个)
-        if (String.valueOf(count).length() > seqLength) {
-            throw new RuntimeException("生成失败：生成数量[" + count + "]超出当前批次号剩余长度限制");
+
+        // 4. [新增逻辑] 查询该批次当前最大的流水号
+        long startSeq = 1L; // 默认为 1
+        String lastCodeValue = tgTraceCodeMapper.selectMaxCodeValueByBatchNo(safeBatchNo);
+
+        if (lastCodeValue != null && lastCodeValue.startsWith(prefix)) {
+            try {
+                // 截取后缀部分解析为数字
+                String seqStr = lastCodeValue.substring(prefix.length());
+                startSeq = Long.parseLong(seqStr) + 1; // 接着下一个数
+            } catch (NumberFormatException e) {
+                // 如果解析失败（比如旧数据格式不一致），为了安全起见，可能需要抛异常或忽略
+                // 这里选择从 1 开始尝试，或者抛出异常防止覆盖
+                throw new RuntimeException("该批次存在格式不符合规范的防伪码，无法自动追加，请更换新批次号");
+            }
         }
 
-        // 4. 定义格式化模板，例如 "%015d" 代表补零至15位整数
+        // 5. 校验生成的数量是否会导致流水号溢出
+        // 最大可能的流水号是 startSeq + count - 1
+        // 例如：seqLength=5 (最大99999)，start=99900, count=200 -> End=100100 -> 溢出
+        String maxSeqStr = String.valueOf(startSeq + count - 1);
+        if (maxSeqStr.length() > seqLength) {
+            throw new RuntimeException("生成失败：批次[" + safeBatchNo + "]剩余容量不足，无法追加生成 " + count + " 个防伪码");
+        }
+
+        // 6. 定义格式化模板
         String formatPattern = "%0" + seqLength + "d";
 
-        // 5. 循环生成 (从1开始)
-        for (int i = 1; i <= count; i++) {
+        // 7. 循环生成 (从 startSeq 开始)
+        for (int i = 0; i < count; i++) {
+            long currentSeq = startSeq + i;
+
             TgTraceCode code = new TgTraceCode();
             code.setProductId(productId);
             code.setBatchNo(safeBatchNo);
-            code.setStatus("2"); // 默认状态：待激活
-            code.setScanState("0"); // 扫码状态：未扫码
+            code.setStatus("2");
+            code.setScanState("0");
 
-            // 核心修改：生成固定格式 codeValue
-            String seq = String.format(formatPattern, i);
+            String seq = String.format(formatPattern, currentSeq);
             code.setCodeValue(prefix + seq);
 
-            code.setCreateBy(creator);
+            code.setCreateBy(createBy); // 使用传入的用户名
 
             buffer.add(code);
 
-            // 每1000条批量插入一次，防止内存溢出
             if (buffer.size() >= 1000) {
                 tgTraceCodeMapper.batchInsertTgTraceCode(buffer);
                 buffer.clear();
             }
         }
-        // 处理剩余数据
         if (!buffer.isEmpty()) {
             tgTraceCodeMapper.batchInsertTgTraceCode(buffer);
         }
@@ -196,6 +214,16 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         }
 
         return AjaxResult.success(result);
+    }
+
+    @Override
+    public int deleteTraceCodeByBatchNo(String batchNo) {
+        return tgTraceCodeMapper.deleteTraceCodeByBatchNo(batchNo);
+    }
+
+    @Override
+    public int updateBatchStatus(String batchNo, String status) {
+        return tgTraceCodeMapper.updateBatchStatus(batchNo, status);
     }
 
     @Override

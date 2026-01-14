@@ -208,4 +208,22 @@
         ORDER BY value DESC
         LIMIT 5
     </select>
+
+    <update id="updateBatchStatus">
+        update tg_trace_code
+        set status = #{status}, update_time = sysdate()
+        where batch_no = #{batchNo}
+    </update>
+
+    <select id="selectMaxCodeValueByBatchNo" parameterType="String" resultType="String">
+        SELECT code_value
+        FROM tg_trace_code
+        WHERE batch_no = #{batchNo}
+        ORDER BY code_id DESC
+        LIMIT 1
+    </select>
+
+    <delete id="deleteTraceCodeByBatchNo" parameterType="String">
+        delete from tg_trace_code where batch_no = #{batchNo}
+    </delete>
 </mapper>

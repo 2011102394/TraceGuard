@@ -84,4 +84,26 @@ public interface TgTraceCodeMapper
     public Long countTotalCode();
 
     public List<Map<String, Object>> selectProductScanRank();
+
+    /**
+     * 批量更新防伪码状态
+     * * @param batchNo 批次号
+     * @param status 目标状态
+     * @return 影响行数
+     */
+    public int updateBatchStatus(@Param("batchNo") String batchNo, @Param("status") String status);
+
+    /**
+     * 查询指定批次号的最后一个防伪码（用于追加生成）
+     * @param batchNo 批次号
+     * @return 最大的防伪码值 (e.g. BATCH01_000020)
+     */
+    public String selectMaxCodeValueByBatchNo(String batchNo);
+
+    /**
+     * 根据批次号删除防伪码
+     * @param batchNo 批次号
+     * @return 影响行数
+     */
+    public int deleteTraceCodeByBatchNo(String batchNo);
 }
