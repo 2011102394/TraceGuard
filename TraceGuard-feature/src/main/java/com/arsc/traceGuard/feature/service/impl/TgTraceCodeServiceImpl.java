@@ -179,6 +179,7 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         Map<String, Object> result = new HashMap<>();
         result.put("product", product);
         result.put("batchNo", code.getBatchNo());
+        result.put("code",code.getCodeValue());
 
         // Step 4: 首次 vs 重复 (修改点：根据扫码情况设置日志状态和备注)
         if ("0".equals(code.getScanState())) {
