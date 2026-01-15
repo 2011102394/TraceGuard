@@ -3,6 +3,7 @@ package com.arsc.traceGuard.web.controller.feature;
 import com.arsc.traceGuard.common.core.domain.AjaxResult;
 import com.arsc.traceGuard.common.utils.ip.IpUtils;
 import com.arsc.traceGuard.feature.service.ITgTraceCodeService;
+import com.arsc.traceGuard.framework.web.service.LicenseVerifyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,12 +20,16 @@ public class TgH5Controller {
     @Autowired
     private ITgTraceCodeService traceCodeService;
 
+    @Autowired
+    private LicenseVerifyUtils licenseVerifyUtils;
+
     /**
      * 扫码验证接口
      * URL: /api/h5/verify
      */
     @GetMapping("/verify")
     public AjaxResult verify(@RequestParam("code")String code, HttpServletRequest request) {
+        licenseVerifyUtils.verifyLicense();
         if (code == null) {
             return AjaxResult.error("无效的防伪码");
         }

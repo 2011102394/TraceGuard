@@ -26,12 +26,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy"    column="update_by"    />
         <result property="updateTime"    column="update_time"    />
         <result property="remark"    column="remark"    />
+        <result property="storageContent"    column="storage_content"    />
     </resultMap>
 
     <sql id="selectTgProductVo">
         select product_id, product_name, product_image, instruction, report_img, company_info, contact_us, status,
         quality_json, report_file, report_image, usage_content, company_content,address,company_logo,
-        del_flag, create_by, create_time, update_by, update_time, remark from tg_product
+        del_flag, create_by, create_time, update_by, update_time, remark,storage_content from tg_product
     </sql>
 
     <select id="selectTgProductList" parameterType="TgProduct" resultMap="TgProductResult">
@@ -70,6 +71,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
             <if test="companyLogo != null">company_logo,</if>
+            <if test="storageContent != null">storage_content,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="productName != null and productName != ''">#{productName},</if>
@@ -92,6 +94,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
             <if test="companyLogo != null">#{company_logo},</if>
+            <if test="storageContent != null">#{storage_content},</if>
          </trim>
     </insert>
 
@@ -118,6 +121,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="companyLogo != null">company_logo = #{companyLogo},</if>
+            <if test="storageContent != null">storage_content = #{storageContent},</if>
         </trim>
         where product_id = #{productId}
     </update>

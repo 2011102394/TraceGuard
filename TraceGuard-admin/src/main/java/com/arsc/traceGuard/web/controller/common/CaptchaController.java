@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Resource;
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
+
+import com.arsc.traceGuard.framework.web.service.LicenseVerifyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.FastByteArrayOutputStream;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +41,9 @@ public class CaptchaController
     
     @Autowired
     private ISysConfigService configService;
+
+    @Autowired
+    private LicenseVerifyUtils licenseVerifyUtils;
     /**
      * 生成验证码
      */
@@ -46,6 +51,8 @@ public class CaptchaController
     public AjaxResult getCode(HttpServletResponse response) throws IOException
     {
         AjaxResult ajax = AjaxResult.success();
+        // 最优先校验 License，如果过期直接抛出异常，不再进行后续验证码和密码校验
+        licenseVerifyUtils.verifyLicense();
         boolean captchaEnabled = configService.selectCaptchaEnabled();
         ajax.put("captchaEnabled", captchaEnabled);
         if (!captchaEnabled)

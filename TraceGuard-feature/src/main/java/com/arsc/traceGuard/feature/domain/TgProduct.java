@@ -65,6 +65,17 @@ public class TgProduct extends BaseEntity
     /**公司logo*/
     private String companyLogo;
 
+    /**储存醒粉*/
+    private String storageContent;
+
+    public String getStorageContent() {
+        return storageContent;
+    }
+
+    public void setStorageContent(String storageContent) {
+        this.storageContent = storageContent;
+    }
+
     public String getProductImage() {
         return productImage;
     }
