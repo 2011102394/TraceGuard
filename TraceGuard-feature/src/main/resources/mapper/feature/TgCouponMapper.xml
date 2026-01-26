@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.arsc.traceGuard.feature.mapper.TgCouponMapper">
+    
+    <resultMap type="TgCoupon" id="TgCouponResult">
+        <result property="couponId"    column="coupon_id"    />
+        <result property="couponName"    column="coupon_name"    />
+        <result property="couponValue"    column="coupon_value"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTgCouponVo">
+        select coupon_id, coupon_name, coupon_value, start_time, end_time, status, remark, create_by, create_time, update_by, update_time from tg_coupon
+    </sql>
+
+    <select id="selectTgCouponList" parameterType="TgCoupon" resultMap="TgCouponResult">
+        <include refid="selectTgCouponVo"/>
+        <where>  
+            <if test="couponName != null  and couponName != ''"> and coupon_name like concat('%', #{couponName}, '%')</if>
+            <if test="couponValue != null "> and coupon_value = #{couponValue}</if>
+            <if test="startTime != null "> and start_time = #{startTime}</if>
+            <if test="endTime != null "> and end_time = #{endTime}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectTgCouponByCouponId" parameterType="Long" resultMap="TgCouponResult">
+        <include refid="selectTgCouponVo"/>
+        where coupon_id = #{couponId}
+    </select>
+
+    <insert id="insertTgCoupon" parameterType="TgCoupon" useGeneratedKeys="true" keyProperty="couponId">
+        insert into tg_coupon
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="couponName != null">coupon_name,</if>
+            <if test="couponValue != null">coupon_value,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="couponName != null">#{couponName},</if>
+            <if test="couponValue != null">#{couponValue},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTgCoupon" parameterType="TgCoupon">
+        update tg_coupon
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="couponName != null">coupon_name = #{couponName},</if>
+            <if test="couponValue != null">coupon_value = #{couponValue},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where coupon_id = #{couponId}
+    </update>
+
+    <delete id="deleteTgCouponByCouponId" parameterType="Long">
+        delete from tg_coupon where coupon_id = #{couponId}
+    </delete>
+
+    <delete id="deleteTgCouponByCouponIds" parameterType="String">
+        delete from tg_coupon where coupon_id in 
+        <foreach item="couponId" collection="array" open="(" separator="," close=")">
+            #{couponId}
+        </foreach>
+    </delete>
+</mapper>

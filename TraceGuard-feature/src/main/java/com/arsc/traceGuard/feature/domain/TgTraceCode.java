@@ -64,6 +64,13 @@ public class TgTraceCode extends BaseEntity
 
     private Long codeCount;
 
+    /** 防伪码类型 0-产品 1-优惠券 */
+    private String cateType;
+
+    /** 优惠券编号*/
+
+    private Long couponId;
+
     public Long getCodeId() {
         return codeId;
     }
@@ -168,6 +175,22 @@ public class TgTraceCode extends BaseEntity
         this.codeCount = codeCount;
     }
 
+    public String getCateType() {
+        return cateType;
+    }
+
+    public void setCateType(String cateType) {
+        this.cateType = cateType;
+    }
+
+    public Long getCouponId() {
+        return couponId;
+    }
+
+    public void setCouponId(Long couponId) {
+        this.couponId = couponId;
+    }
+
     @Override
     public String toString() {
         return "TgTraceCode{" +
@@ -184,6 +207,8 @@ public class TgTraceCode extends BaseEntity
                 ", codeValue='" + codeValue + '\'' +
                 ", productId=" + productId +
                 ", codeCount=" + codeCount +
+                ", cateType='" + cateType + '\'' +
+                ", couponId=" + couponId +
                 '}';
     }
 }

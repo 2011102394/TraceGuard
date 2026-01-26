@@ -22,10 +22,13 @@
         <result property="updateTime"    column="update_time"    />
         <result property="remark"    column="remark"    />
         <result property="codeCount" column="code_count" />
+        <result property="cateType" column="cate_type"/>
+        <result property="couponId" column="coupon_id"/>
     </resultMap>
 
     <sql id="selectTgTraceCodeVo">
-        select code_id, product_id, code_value, batch_no, scan_state, scan_count, first_scan_time, first_scan_ip, first_scan_loc, status, create_by, create_time, update_by, update_time, remark from tg_trace_code
+        select code_id, product_id, code_value, batch_no, scan_state, scan_count, first_scan_time, first_scan_ip,
+               first_scan_loc, status, create_by, create_time, update_by, update_time, remark, cate_type , couponId from tg_trace_code
     </sql>
 
     <select id="selectTgTraceCodeList" parameterType="TgTraceCode" resultMap="TgTraceCodeResult">
@@ -79,6 +82,8 @@
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="remark != null">remark,</if>
+            <if test="cateType != null">cate_type,</if>
+            <if test="couponId != null">coupon_id,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="productId != null">#{productId},</if>
@@ -90,14 +95,16 @@
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="remark != null">#{remark},</if>
+            <if test="cateType != null">#{cateType},</if>
+            <if test="couponId != null">#{couponId},</if>
         </trim>
     </insert>
 
     <insert id="batchInsertTgTraceCode">
-        insert into tg_trace_code (product_id, code_value, batch_no, scan_state, scan_count, status, create_by, create_time)
+        insert into tg_trace_code (product_id, code_value, batch_no, scan_state, scan_count, status, cate_type, coupon_id, create_by, create_time)
         values
         <foreach collection="list" item="item" separator=",">
-            (#{item.productId}, #{item.codeValue}, #{item.batchNo}, '0', 0, '2', #{item.createBy}, sysdate())
+            (#{item.productId}, #{item.codeValue}, #{item.batchNo}, '0', 0, '2',#{item.cateType}, #{item.couponId}, #{item.createBy}, sysdate())
         </foreach>
     </insert>
 
@@ -116,6 +123,8 @@
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="remark != null">remark = #{remark},</if>
+            <if test="cateType != null">cate_type = #{cateType},</if>
+            <if test="couponId != null">coupon_id = #{couponId},</if>
         </trim>
         where code_id = #{codeId}
     </update>
