@@ -170,16 +170,28 @@
         tc.scan_count,
         tc.first_scan_time,
         tc.first_scan_ip,
-        tc.first_scan_loc, tc.product_id,
+        tc.first_scan_loc,
+        tc.product_id,
+        tc.cate_type,
+        tc.coupon_id,
         tc.create_time,
-        p.product_name  FROM tg_trace_code tc
-        LEFT JOIN tg_product p ON tc.product_id = p.product_id
+        CASE 
+            WHEN tc.cate_type = '0' THEN p.product_name
+            WHEN tc.cate_type = '1' THEN c.coupon_name
+            ELSE NULL
+        END as product_name
+        FROM tg_trace_code tc
+        LEFT JOIN tg_product p ON tc.cate_type = '0' AND tc.product_id = p.product_id
+        LEFT JOIN tg_coupon c ON tc.cate_type = '1' AND tc.coupon_id = c.coupon_id
         <where>
             <if test="batchNo != null and batchNo != ''">
                 AND tc.batch_no = #{batchNo}
             </if>
             <if test="productId != null">
                 AND tc.product_id = #{productId}
+            </if>
+            <if test="couponId != null">
+                AND tc.coupon_id = #{couponId}
             </if>
         </where>
     </select>
@@ -230,6 +242,16 @@
         WHERE batch_no = #{batchNo}
         ORDER BY code_id DESC
         LIMIT 1
+    </select>
+
+    <select id="selectBatchScanStats" resultType="java.util.Map">
+        SELECT
+        tc.batch_no as batchNo,
+        COUNT(*) as totalCount,
+        IFNULL(SUM(CASE WHEN tc.scan_state = '1' THEN 1 ELSE 0 END), 0) as scanCount,
+        IFNULL(SUM(CASE WHEN tc.status = '0' THEN 1 ELSE 0 END), 0) as activatedCount
+        FROM tg_trace_code tc
+        GROUP BY tc.batch_no
     </select>
 
     <delete id="deleteTraceCodeByBatchNo" parameterType="String">

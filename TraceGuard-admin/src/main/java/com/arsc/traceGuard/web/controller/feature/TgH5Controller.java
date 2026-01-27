@@ -28,7 +28,7 @@ public class TgH5Controller {
      * URL: /api/h5/verify
      */
     @GetMapping("/verify")
-    public AjaxResult verify(@RequestParam("code")String code, HttpServletRequest request) {
+    public AjaxResult verify(@RequestParam("code")String code, @RequestParam(value = "type", defaultValue = "0")String type, HttpServletRequest request) {
         licenseVerifyUtils.verifyLicense();
         if (code == null) {
             return AjaxResult.error("无效的防伪码");
@@ -39,6 +39,6 @@ public class TgH5Controller {
         String userAgent = request.getHeader("User-Agent");
 
         // 调用之前写好的 Service 业务逻辑
-        return traceCodeService.verifyCode(code, ip, userAgent);
+        return traceCodeService.verifyCode(code, type, ip, userAgent);
     }
 }

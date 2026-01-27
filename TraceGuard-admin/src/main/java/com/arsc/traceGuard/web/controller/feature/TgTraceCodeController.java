@@ -1,35 +1,34 @@
 package com.arsc.traceGuard.web.controller.feature;
 
-import java.util.List;
-import java.util.Map;
-import java.util.TimerTask;
-import javax.servlet.http.HttpServletResponse;
-
-import com.arsc.traceGuard.common.utils.StringUtils;
-import com.arsc.traceGuard.common.utils.sign.AesUtils;
-import com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq;
-import com.arsc.traceGuard.framework.manager.AsyncManager;
-import com.arsc.traceGuard.system.service.ISysConfigService;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 import com.arsc.traceGuard.common.annotation.Log;
 import com.arsc.traceGuard.common.core.controller.BaseController;
 import com.arsc.traceGuard.common.core.domain.AjaxResult;
 import com.arsc.traceGuard.common.core.page.TableDataInfo;
 import com.arsc.traceGuard.common.enums.BusinessType;
+import com.arsc.traceGuard.common.utils.StringUtils;
 import com.arsc.traceGuard.common.utils.poi.ExcelUtil;
+import com.arsc.traceGuard.common.utils.sign.AesUtils;
 import com.arsc.traceGuard.feature.domain.TgTraceCode;
+import com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq;
 import com.arsc.traceGuard.feature.service.ITgTraceCodeService;
+import com.arsc.traceGuard.framework.manager.AsyncManager;
+import com.arsc.traceGuard.system.service.ISysConfigService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
+import java.util.Map;
+import java.util.TimerTask;
 
 /**
  * 防伪码管理 Controller
+ *
  * @author arsc
  */
 @RestController
 @RequestMapping("/feature/code")
-public class TgTraceCodeController extends BaseController
-{
+public class TgTraceCodeController extends BaseController {
     @Autowired
     private ITgTraceCodeService tgTraceCodeService;
 
@@ -40,8 +39,7 @@ public class TgTraceCodeController extends BaseController
      * 查询防伪码列表 (全量查询，通常不推荐直接用，备用)
      */
     @GetMapping("/list")
-    public TableDataInfo list(TgTraceCode tgTraceCode)
-    {
+    public TableDataInfo list(TgTraceCode tgTraceCode) {
         startPage();
         List<TgTraceCode> list = tgTraceCodeService.selectTgTraceCodeList(tgTraceCode);
         return getDataTable(list);
@@ -51,8 +49,7 @@ public class TgTraceCodeController extends BaseController
      * 查询某产品的【生码批次】列表
      */
     @GetMapping("/batch/list")
-    public TableDataInfo listBatch(TgTraceCode tgTraceCode)
-    {
+    public TableDataInfo listBatch(TgTraceCode tgTraceCode) {
         // 这里不需要分页，或者手动假分页，因为是聚合结果
         List<TgTraceCode> list = tgTraceCodeService.selectBatchList(tgTraceCode);
         return getDataTable(list);
@@ -63,8 +60,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码管理", businessType = BusinessType.INSERT)
     @PostMapping("/generate")
-    public AjaxResult generate(@RequestBody com.arsc.traceGuard.feature.domain.dto.CodeGenerateReq req)
-    {
+    public AjaxResult generate(@RequestBody CodeGenerateReq req) {
         // 1. 获取当前登录用户名 (必须在主线程获取)
         String currentUsername = getUsername();
 
@@ -74,7 +70,7 @@ public class TgTraceCodeController extends BaseController
             public void run() {
                 try {
                     // 调用 Service，传入用户名
-                    tgTraceCodeService.generateCodes(req.getProductId(), req.getBatchNo(), req.getCount(), currentUsername);
+                    tgTraceCodeService.generateCodes(req.getType(), req.getCouponId(), req.getProductId(), req.getBatchNo(), req.getCount(), currentUsername);
                 } catch (Exception e) {
                     // 异步任务中的异常建议记录日志，或者通过消息通知用户(如有)
                     e.printStackTrace();
@@ -92,8 +88,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码导出", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, TgTraceCode queryParams)
-    {
+    public void export(HttpServletResponse response, TgTraceCode queryParams) {
         // 1. 从数据库参数配置中获取 H5 域名
         // 键名必须与后台【参数设置】里配置的一致
         String h5Domain = configService.selectConfigByKey("trace.h5.domain");
@@ -110,7 +105,7 @@ public class TgTraceCodeController extends BaseController
         String h5Path = "/h5/verify";
 
         // 2. 查询原始数据
-        List<TgTraceCode> list = tgTraceCodeService.selectListByBatch(queryParams.getProductId(), queryParams.getBatchNo());
+        List<TgTraceCode> list = tgTraceCodeService.selectListByBatch(queryParams.getProductId(), queryParams.getCouponId(), queryParams.getBatchNo());
 
         // 3. 拼接 URL + 加密
         String baseUrl = h5Domain + h5Path + "?code=";
@@ -118,8 +113,9 @@ public class TgTraceCodeController extends BaseController
         for (TgTraceCode code : list) {
             // 加密
             String encryptedCode = AesUtils.encrypt(code.getCodeValue());
-            // 拼接
-            code.setQrCodeUrl(baseUrl + encryptedCode);
+            // 拼接，添加type参数（0=产品，1=优惠券）
+            String typeParam = code.getCateType() != null ? code.getCateType() : "0";
+            code.setQrCodeUrl(baseUrl + encryptedCode + "&type=" + typeParam);
         }
 
         // 4. 导出
@@ -131,8 +127,7 @@ public class TgTraceCodeController extends BaseController
      * 获取防伪码的二维码内容 (用于前端预览)
      */
     @GetMapping("/qr/{codeId}")
-    public AjaxResult getQrCodeContent(@PathVariable("codeId") Long codeId)
-    {
+    public AjaxResult getQrCodeContent(@PathVariable("codeId") Long codeId) {
         TgTraceCode code = tgTraceCodeService.selectTgTraceCodeByCodeId(codeId);
         if (code == null) {
             return error("防伪码不存在");
@@ -147,17 +142,18 @@ public class TgTraceCodeController extends BaseController
         // 2. 加密并拼接
         String h5Path = "/h5/verify";
         String encryptedCode = AesUtils.encrypt(code.getCodeValue());
-        String fullUrl = h5Domain + h5Path + "?code=" + encryptedCode;
+        // 添加type参数（0=产品，1=优惠券）
+        String typeParam = code.getCateType() != null ? code.getCateType() : "0";
+        String fullUrl = h5Domain + h5Path + "?code=" + encryptedCode + "&type=" + typeParam;
 
-        return success( fullUrl);
+        return success(fullUrl);
     }
 
     /**
      * 获取防伪码详细信息
      */
     @GetMapping(value = "/{codeId}")
-    public AjaxResult getInfo(@PathVariable("codeId") Long codeId)
-    {
+    public AjaxResult getInfo(@PathVariable("codeId") Long codeId) {
         return success(tgTraceCodeService.selectTgTraceCodeByCodeId(codeId));
     }
 
@@ -166,8 +162,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码", businessType = BusinessType.DELETE)
     @DeleteMapping("/{codeIds}")
-    public AjaxResult remove(@PathVariable Long[] codeIds)
-    {
+    public AjaxResult remove(@PathVariable Long[] codeIds) {
         return toAjax(tgTraceCodeService.deleteTgTraceCodeByCodeIds(codeIds));
     }
 
@@ -175,8 +170,7 @@ public class TgTraceCodeController extends BaseController
      * 获取防伪码统计信息
      */
     @GetMapping("/stats")
-    public AjaxResult stats(TgTraceCode tgTraceCode)
-    {
+    public AjaxResult stats(TgTraceCode tgTraceCode) {
         Map<String, Object> stats = tgTraceCodeService.selectTraceCodeStats(tgTraceCode);
         return success(stats);
     }
@@ -186,8 +180,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@RequestBody TgTraceCode tgTraceCode)
-    {
+    public AjaxResult edit(@RequestBody TgTraceCode tgTraceCode) {
         return toAjax(tgTraceCodeService.updateTgTraceCode(tgTraceCode));
     }
 
@@ -196,8 +189,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码管理", businessType = BusinessType.UPDATE)
     @PutMapping("/batch/status")
-    public AjaxResult updateBatchStatus(@RequestBody TgTraceCode tgTraceCode)
-    {
+    public AjaxResult updateBatchStatus(@RequestBody TgTraceCode tgTraceCode) {
         if (StringUtils.isEmpty(tgTraceCode.getBatchNo())) {
             return AjaxResult.error("批次号不能为空");
         }
@@ -212,8 +204,7 @@ public class TgTraceCodeController extends BaseController
      */
     @Log(title = "防伪码管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/batch/{batchNo}")
-    public AjaxResult removeBatch(@PathVariable String batchNo)
-    {
+    public AjaxResult removeBatch(@PathVariable String batchNo) {
         return toAjax(tgTraceCodeService.deleteTraceCodeByBatchNo(batchNo));
     }
 }

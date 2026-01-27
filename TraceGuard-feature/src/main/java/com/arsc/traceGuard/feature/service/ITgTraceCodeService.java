@@ -29,12 +29,14 @@ public interface ITgTraceCodeService
 
     /**
      * 批量生成防伪码
+     * @param type 防伪码类型 '0'-产品码 ‘1’-优惠券
+     * @param couponId 优惠券ID
      * @param productId 产品ID
      * @param batchNo 批次号
      * @param count 数量
      * @param createBy 创建人 (新增参数)
      */
-    public void generateCodes(Long productId, String batchNo, Integer count, String createBy);
+    public void generateCodes(String type, Long couponId,Long productId, String batchNo, Integer count, String createBy);
 
     /**
      * 验证防伪码 (H5调用)
@@ -43,7 +45,7 @@ public interface ITgTraceCodeService
      * @param userAgent 浏览器标识
      * @return 验证结果（包含真伪状态、产品信息等）
      */
-    public AjaxResult verifyCode(String codeValue, String ip, String userAgent);
+    public AjaxResult verifyCode(String codeParam, String type, String ip, String userAgent);
 
     /**
      * 修改防伪码
@@ -63,7 +65,7 @@ public interface ITgTraceCodeService
     /**
      * 查询指定批次的所有码
      */
-    public List<TgTraceCode> selectListByBatch(Long productId, String batchNo);
+    public List<TgTraceCode> selectListByBatch(Long productId, Long couponId, String batchNo);
 
     public Map<String, Object> selectTraceCodeStats(TgTraceCode tgTraceCode);
 

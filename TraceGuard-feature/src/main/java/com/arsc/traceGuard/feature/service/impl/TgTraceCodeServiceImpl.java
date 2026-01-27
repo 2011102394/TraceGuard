@@ -5,11 +5,15 @@ import com.arsc.traceGuard.common.utils.DateUtils;
 import com.arsc.traceGuard.common.utils.ip.AddressUtils;
 import com.arsc.traceGuard.common.utils.ip.IpUtils;
 import com.arsc.traceGuard.common.utils.sign.AesUtils;
+import com.arsc.traceGuard.feature.domain.TgBatch;
+import com.arsc.traceGuard.feature.domain.TgCoupon;
 import com.arsc.traceGuard.feature.domain.TgProduct;
 import com.arsc.traceGuard.feature.domain.TgScanLog;
 import com.arsc.traceGuard.feature.domain.TgTraceCode;
+import com.arsc.traceGuard.feature.mapper.TgCouponMapper;
 import com.arsc.traceGuard.feature.mapper.TgProductMapper;
 import com.arsc.traceGuard.feature.mapper.TgTraceCodeMapper;
+import com.arsc.traceGuard.feature.service.ITgBatchService;
 import com.arsc.traceGuard.feature.service.ITgScanLogService;
 import com.arsc.traceGuard.feature.service.ITgTraceCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +27,11 @@ import java.util.Map;
 
 /**
  * 防伪码管理 Service业务层处理
+ *
  * @author arsc
  */
 @Service
-public class TgTraceCodeServiceImpl implements ITgTraceCodeService
-{
+public class TgTraceCodeServiceImpl implements ITgTraceCodeService {
     @Autowired
     private TgTraceCodeMapper tgTraceCodeMapper;
 
@@ -35,7 +39,13 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     private TgProductMapper tgProductMapper;
 
     @Autowired
+    private TgCouponMapper tgCouponMapper;
+
+    @Autowired
     private ITgScanLogService scanLogService;
+
+    @Autowired
+    private ITgBatchService batchService;
 
     /**
      * 批量生成防伪码实现 (支持追加生成)
@@ -43,12 +53,12 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void generateCodes(Long productId, String batchNo, Integer count,String createBy) {
+    public void generateCodes(String type, Long couponId, Long productId, String batchNo, Integer count, String createBy) {
         List<TgTraceCode> buffer = new ArrayList<>();
 
         // 1. 准备前缀 (批次号 + "_")
         String safeBatchNo = (batchNo == null) ? "" : batchNo;
-        String prefix = safeBatchNo + "_";
+        String prefix = safeBatchNo;
 
         // 2. 计算流水号可用长度 (总长24 - 前缀长度)
         int totalLength = 24;
@@ -91,11 +101,16 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
             long currentSeq = startSeq + i;
 
             TgTraceCode code = new TgTraceCode();
-            code.setProductId(productId);
             code.setBatchNo(safeBatchNo);
             code.setStatus("2");
             code.setScanState("0");
-
+            code.setCateType(type);
+            if("0".equals(type) && productId != null){
+                code.setProductId(productId);
+            }
+            if("1".equals(type) && couponId !=null){
+                code.setCouponId(couponId);
+            }
             String seq = String.format(formatPattern, currentSeq);
             code.setCodeValue(prefix + seq);
 
@@ -111,6 +126,46 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         if (!buffer.isEmpty()) {
             tgTraceCodeMapper.batchInsertTgTraceCode(buffer);
         }
+
+        // 8. [新增] 检查并创建批次记录
+        TgBatch existingBatch = batchService.selectTgBatchByBatchNo(safeBatchNo);
+        if (existingBatch == null) {
+            // 批次记录不存在，需要创建
+            TgBatch newBatch = new TgBatch();
+            newBatch.setBatchNo(safeBatchNo);
+            newBatch.setBizType(type); // 0=产品, 1=优惠券
+            
+            // 设置关联ID和关联名称
+            if ("0".equals(type) && productId != null) {
+                newBatch.setRelationId(productId);
+                // 查询产品名称
+                TgProduct product = tgProductMapper.selectTgProductByProductId(productId);
+                if (product != null) {
+                    newBatch.setRelationName(product.getProductName());
+                }
+            } else if ("1".equals(type) && couponId != null) {
+                newBatch.setRelationId(couponId);
+                // 查询优惠券名称
+                TgCoupon coupon = tgCouponMapper.selectTgCouponByCouponId(couponId);
+                if (coupon != null) {
+                    newBatch.setRelationName(coupon.getCouponName());
+                }
+            }
+            
+            // 设置初始值
+            newBatch.setTotalCount(0L);
+            newBatch.setScanCount(0L);
+            newBatch.setActivatedCount(0L);
+            newBatch.setStatus("0"); // 0=正常
+            newBatch.setCreateBy(createBy);
+            
+            // 创建批次记录
+            batchService.insertTgBatch(newBatch);
+        }
+        
+        // 9. [新增] 同步更新批次统计信息
+        // 更新生码总数，已激活数量默认为0（新生成的防伪码状态为待激活）
+        batchService.updateBatchStats(safeBatchNo, Long.valueOf(count), 0L);
     }
 
     /**
@@ -118,7 +173,7 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public AjaxResult verifyCode(String codeParam, String ip, String userAgent) {
+    public AjaxResult verifyCode(String codeParam, String type, String ip, String userAgent) {
         // Step 0: 预备日志对象
         TgScanLog scanLog = new TgScanLog();
         scanLog.setScanIp(ip);
@@ -175,11 +230,20 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
         }
 
         // Step 3: 准备返回数据
-        TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
         Map<String, Object> result = new HashMap<>();
-        result.put("product", product);
         result.put("batchNo", code.getBatchNo());
-        result.put("code",code.getCodeValue());
+        result.put("code", code.getCodeValue());
+
+        // 根据type参数实现分支逻辑
+        if ("1".equals(type) || "1".equals(code.getCateType())) {
+            // 优惠券防伪码验证流程
+            TgCoupon coupon = tgCouponMapper.selectTgCouponByCouponId(code.getCouponId());
+            result.put("coupon", coupon);
+        } else {
+            // 产品防伪码验证流程
+            TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
+            result.put("product", product);
+        }
 
         // Step 4: 首次 vs 重复 (修改点：根据扫码情况设置日志状态和备注)
         if ("0".equals(code.getScanState())) {
@@ -224,8 +288,26 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteTraceCodeByBatchNo(String batchNo) {
-        return tgTraceCodeMapper.deleteTraceCodeByBatchNo(batchNo);
+        // 1. 删除防伪码
+        int result = tgTraceCodeMapper.deleteTraceCodeByBatchNo(batchNo);
+        
+        // 2. 检查批次是否存在
+        TgBatch existingBatch = batchService.selectTgBatchByBatchNo(batchNo);
+        if (existingBatch != null) {
+            // 3. 删除批次记录
+            // 先查询批次ID
+            List<TgBatch> batchList = batchService.selectTgBatchList(new TgBatch());
+            for (TgBatch batch : batchList) {
+                if (batch.getBatchNo().equals(batchNo)) {
+                    batchService.deleteTgBatchByBatchId(batch.getBatchId());
+                    break;
+                }
+            }
+        }
+        
+        return result;
     }
 
     @Override
@@ -261,8 +343,60 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteTgTraceCodeByCodeIds(Long[] codeIds) {
-        return tgTraceCodeMapper.deleteTgTraceCodeByCodeIds(codeIds);
+        // 1. 查询要删除的防伪码信息，按批次统计数量
+        Map<String, Long> batchDeleteCountMap = new HashMap<>();
+        Map<String, Long> batchOriginalCountMap = new HashMap<>();
+        
+        for (Long codeId : codeIds) {
+            TgTraceCode traceCode = tgTraceCodeMapper.selectTgTraceCodeByCodeId(codeId);
+            if (traceCode != null && traceCode.getBatchNo() != null) {
+                String batchNo = traceCode.getBatchNo();
+                
+                // 统计删除数量
+                batchDeleteCountMap.put(batchNo, batchDeleteCountMap.getOrDefault(batchNo, 0L) + 1);
+                
+                // 统计批次原始数量（如果还没统计过）
+                if (!batchOriginalCountMap.containsKey(batchNo)) {
+                    TgTraceCode query = new TgTraceCode();
+                    query.setBatchNo(batchNo);
+                    List<TgTraceCode> batchList = tgTraceCodeMapper.selectBatchList(query);
+                    if (!batchList.isEmpty()) {
+                        for (TgTraceCode item : batchList) {
+                            if (item.getBatchNo().equals(batchNo) && item.getCodeCount() != null) {
+                                batchOriginalCountMap.put(batchNo, item.getCodeCount());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 2. 删除防伪码
+        int result = tgTraceCodeMapper.deleteTgTraceCodeByCodeIds(codeIds);
+        
+        // 3. 检查并处理批次记录
+        for (Map.Entry<String, Long> entry : batchDeleteCountMap.entrySet()) {
+            String batchNo = entry.getKey();
+            Long deleteCount = entry.getValue();
+            Long originalCount = batchOriginalCountMap.getOrDefault(batchNo, 0L);
+            
+            // 检查是否删除了该批次的所有防伪码
+            if (deleteCount >= originalCount) {
+                // 删除批次记录
+                TgBatch existingBatch = batchService.selectTgBatchByBatchNo(batchNo);
+                if (existingBatch != null) {
+                    batchService.deleteTgBatchByBatchId(existingBatch.getBatchId());
+                }
+            } else {
+                // 只删除了部分防伪码，更新统计信息
+                batchService.updateBatchStats(batchNo, -deleteCount, 0L);
+            }
+        }
+        
+        return result;
     }
 
     @Override
@@ -271,7 +405,7 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService
     }
 
     @Override
-    public List<TgTraceCode> selectListByBatch(Long productId, String batchNo) {
-        return tgTraceCodeMapper.selectListByBatch(productId, batchNo);
+    public List<TgTraceCode> selectListByBatch(Long productId, Long couponId, String batchNo) {
+        return tgTraceCodeMapper.selectListByBatch(productId, couponId, batchNo);
     }
 }

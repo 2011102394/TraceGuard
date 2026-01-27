@@ -79,11 +79,13 @@ public interface TgTraceCodeMapper
      * @param batchNo 批次号
      * @return
      */
-    public List<TgTraceCode> selectListByBatch(@Param("productId") Long productId, @Param("batchNo") String batchNo);
+    public List<TgTraceCode> selectListByBatch(@Param("productId") Long productId, @Param("couponId") Long couponId, @Param("batchNo") String batchNo);
 
     public Long countTotalCode();
 
     public List<Map<String, Object>> selectProductScanRank();
+
+    public List<Map<String, Object>> selectBatchScanStats();
 
     /**
      * 批量更新防伪码状态
