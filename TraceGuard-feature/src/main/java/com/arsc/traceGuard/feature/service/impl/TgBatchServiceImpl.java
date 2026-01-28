@@ -101,6 +101,11 @@ public class TgBatchServiceImpl implements ITgBatchService
     }
 
     @Override
+    public int updateBatchStats(String batchNo, long addCount, long addActivatedCount)
+    {
+        return tgBatchMapper.updateBatchStats(batchNo, (long)addCount, (long)addActivatedCount);
+    }
+
     public int updateBatchStats(String batchNo, Long addCount, Long addActivatedCount)
     {
         return tgBatchMapper.updateBatchStats(batchNo, addCount, addActivatedCount);
