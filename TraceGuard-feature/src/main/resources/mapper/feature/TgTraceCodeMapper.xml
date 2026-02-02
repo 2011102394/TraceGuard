@@ -28,7 +28,7 @@
 
     <sql id="selectTgTraceCodeVo">
         select code_id, product_id, code_value, batch_no, scan_state, scan_count, first_scan_time, first_scan_ip,
-               first_scan_loc, status, create_by, create_time, update_by, update_time, remark, cate_type , couponId from tg_trace_code
+               first_scan_loc, status, create_by, create_time, update_by, update_time, remark, cate_type , coupon_id from tg_trace_code
     </sql>
 
     <select id="selectTgTraceCodeList" parameterType="TgTraceCode" resultMap="TgTraceCodeResult">

@@ -239,6 +239,8 @@ public class TgTraceCodeServiceImpl implements ITgTraceCodeService {
             // 优惠券防伪码验证流程
             TgCoupon coupon = tgCouponMapper.selectTgCouponByCouponId(code.getCouponId());
             result.put("coupon", coupon);
+            result.put("companyInfo","齐峰花粉");
+
         } else {
             // 产品防伪码验证流程
             TgProduct product = tgProductMapper.selectTgProductByProductId(code.getProductId());
